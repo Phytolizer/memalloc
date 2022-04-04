@@ -11,52 +11,63 @@ const char* cc(void) {
 }
 
 #define PROJECT_NAME "memalloc"
-#define CFLAGS "-Wall", "-Wextra", "-Wpedantic", "-ggdb"
+#define CFLAGS "-Wall", "-Wextra", "-Wpedantic", "-ggdb3"
 
 #define TAU_INC "-Itau"
 
+const char* const lib_sources[] = {
+        "memalloc",
+};
+
 const char* const main_sources[] = {
         "main",
-        "memalloc",
 };
 
 const char* const test_sources[] = {
         "test_main",
 };
 
+#define COMPILE_OBJECTS(sources, extra_flags, objects) \
+    do { \
+        *(objects) = malloc(sizeof(const char*) * (sizeof(sources) / sizeof(const char*) + 1)); \
+        size_t i = 0; \
+        FOREACH_ARRAY(const char*, source, sources, { \
+            const char* object = PATH("build", "obj", CONCAT(source, ".o")); \
+            CMD(cc(), "-c", CFLAGS, extra_flags, CONCAT(source, ".c"), "-o", object); \
+            (*(objects))[i] = object; \
+            i++; \
+        }); \
+        (*(objects))[i] = NULL; \
+    } while (false)
+
 int main(int argc, char** argv) {
     REBUILD_SELF(argc, argv);
 
-    const char** main_objects =
-            malloc(sizeof(const char*) * (sizeof(main_sources) / sizeof(const char*) + 1));
-
     MKDIRS("build", "obj");
-    size_t i = 0;
-    FOREACH_ARRAY(const char*, source, main_sources, {
-        const char* object = PATH("build", "obj", CONCAT(source, ".o"));
-        CMD(cc(), "-c", CFLAGS, CONCAT(source, ".c"), "-o", object);
-        main_objects[i] = object;
-        i++;
-    });
-    main_objects[i] = NULL;
 
-    char** build_exe = collect_args("vpvv", cc(), main_objects, "-o", PATH("build", PROJECT_NAME));
+    const char** lib_objects;
+    COMPILE_OBJECTS(lib_sources, "", &lib_objects);
+
+    char** build_lib =
+            collect_args("vvvp", "ar", "rcs", "build/lib" PROJECT_NAME ".a", lib_objects);
+    echo_cmd(build_lib);
+    coolbuild_exec(build_lib);
+
+    const char** main_objects;
+    COMPILE_OBJECTS(main_sources, "", &main_objects);
+
+    char** build_exe = collect_args(
+            "vpvvvv", cc(), main_objects, "-Lbuild", "-lmemalloc", "-o", PATH("build", PROJECT_NAME));
     echo_cmd(build_exe);
     coolbuild_exec(build_exe);
 
-    i = 0;
-    const char** test_objects =
-            malloc(sizeof(const char*) * (sizeof(test_sources) / sizeof(const char*) + 1));
-    FOREACH_ARRAY(const char*, source, test_sources, {
-        const char* object = PATH("build", "obj", CONCAT(source, ".o"));
-        CMD(cc(), "-c", CFLAGS, TAU_INC, CONCAT(source, ".c"), "-o", object);
-        test_objects[i] = object;
-        i++;
-    });
-    test_objects[i] = NULL;
-    build_exe = collect_args("vpvv", cc(), test_objects, "-o", PATH("build", "test_" PROJECT_NAME));
-    echo_cmd(build_exe);
-    coolbuild_exec(build_exe);
+    const char** test_objects;
+    COMPILE_OBJECTS(test_sources, TAU_INC, &test_objects);
+
+    char** build_test_exe = collect_args("vpvvvv", cc(), test_objects, "-Lbuild", "-lmemalloc", "-o",
+            PATH("build", "test_" PROJECT_NAME));
+    echo_cmd(build_test_exe);
+    coolbuild_exec(build_test_exe);
 
     if (argc > 1) {
         if (strcmp(argv[1], "run") == 0) {

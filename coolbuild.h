@@ -75,8 +75,10 @@ const char* vconcat_sep_impl(const char* sep, va_list args) {
     va_copy(args2, args);
     for (const char* arg = va_arg(args2, const char*); arg != NULL;
             arg = va_arg(args2, const char*)) {
-        length += strlen(arg);
-        seps += 1;
+        if (arg[0] != '\0') {
+            length += strlen(arg);
+            seps += 1;
+        }
     }
     va_end(args2);
 
@@ -85,13 +87,15 @@ const char* vconcat_sep_impl(const char* sep, va_list args) {
     length = 0;
     for (const char* arg = va_arg(args, const char*); arg != NULL;
             arg = va_arg(args, const char*)) {
-        size_t n = strlen(arg);
-        memcpy(result + length, arg, n);
-        length += n;
-        if (seps > 0) {
-            memcpy(result + length, sep, sep_len);
-            length += sep_len;
-            seps -= 1;
+        if (arg[0] != '\0') {
+            size_t n = strlen(arg);
+            memcpy(result + length, arg, n);
+            length += n;
+            if (seps > 0) {
+                memcpy(result + length, sep, sep_len);
+                length += sep_len;
+                seps -= 1;
+            }
         }
     }
 
@@ -197,15 +201,21 @@ void echo_cmd(char** argv) {
 void cmd_impl(int ignore, ...) {
     size_t argc = 0;
 
-    FOREACH_VARGS(const char*, arg, ignore, { argc += 1; });
+    FOREACH_VARGS(const char*, arg, ignore, {
+        if (arg[0] != '\0') {
+            argc += 1;
+        }
+    });
     assert(argc >= 1);
 
     char** argv = malloc(sizeof(char*) * (argc + 1));
 
     argc = 0;
     FOREACH_VARGS(char*, arg, ignore, {
-        argv[argc] = arg;
-        argc += 1;
+        if (arg[0] != '\0') {
+            argv[argc] = arg;
+            argc += 1;
+        }
     });
     argv[argc] = NULL;
 
