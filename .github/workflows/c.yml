@@ -1,0 +1,21 @@
+name: C
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: configure
+      run: gcc -o coolbuild coolbuild.c
+    - name: build
+      run: ./coolbuild
+    - name: test
+      run: ./coolbuild test
