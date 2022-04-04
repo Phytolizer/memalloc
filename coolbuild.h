@@ -13,11 +13,9 @@
 #include <unistd.h>
 
 #define PATH_SEPARATOR "/"
-#define MKDIR(path, mode) mkdir(path, mode)
-
 #define PATH_SEPARATOR_LENGTH (sizeof PATH_SEPARATOR - 1)
 
-#define FOREACH_VARGS(type, arg, begin, body) \
+#define FOREACH_VARARGS(type, arg, begin, body) \
     do { \
         va_list args; \
         va_start(args, begin); \
@@ -119,7 +117,7 @@ void mkdirs_impl(int ignore, ...) {
     size_t length = 0;
     int64_t seps = -1;
 
-    FOREACH_VARGS(const char*, arg, ignore, {
+    FOREACH_VARARGS(const char*, arg, ignore, {
         length += strlen(arg);
         seps += 1;
     });
@@ -127,14 +125,14 @@ void mkdirs_impl(int ignore, ...) {
     char* result = malloc(length + (seps * PATH_SEPARATOR_LENGTH) + 1);
 
     length = 0;
-    FOREACH_VARGS(const char*, arg, ignore, {
+    FOREACH_VARARGS(const char*, arg, ignore, {
         size_t n = strlen(arg);
         memcpy(result + length, arg, n);
         length += n;
 
         result[length] = '\0';
         printf("[INFO] mkdir %s\n", result);
-        if (MKDIR(result, 0755) < 0 && errno != EEXIST) {
+        if (mkdir(result, 0755) < 0 && errno != EEXIST) {
             fprintf(stderr, "[ERROR] Could not create directory '%s': %s\n", result,
                     strerror(errno));
             exit(1);
@@ -148,17 +146,17 @@ void mkdirs_impl(int ignore, ...) {
     });
 }
 
-#define MKDIRS(...) mkdirs_impl(69, __VA_ARGS__, NULL)
+#define MKDIRS(...) mkdirs_impl(0, __VA_ARGS__, NULL)
 
 const char* concat_impl(int ignore, ...) {
     size_t length = 0;
 
-    FOREACH_VARGS(const char*, arg, ignore, { length += strlen(arg); });
+    FOREACH_VARARGS(const char*, arg, ignore, { length += strlen(arg); });
 
     char* result = malloc(length + 1);
 
     length = 0;
-    FOREACH_VARGS(const char*, arg, ignore, {
+    FOREACH_VARARGS(const char*, arg, ignore, {
         size_t n = strlen(arg);
         memcpy(result + length, arg, n);
         length += n;
@@ -168,7 +166,7 @@ const char* concat_impl(int ignore, ...) {
     return result;
 }
 
-#define CONCAT(...) concat_impl(69, __VA_ARGS__, NULL)
+#define CONCAT(...) concat_impl(0, __VA_ARGS__, NULL)
 
 void coolbuild_exec(char** argv) {
     pid_t pid = fork();
@@ -201,7 +199,7 @@ void echo_cmd(char** argv) {
 void cmd_impl(int ignore, ...) {
     size_t argc = 0;
 
-    FOREACH_VARGS(const char*, arg, ignore, {
+    FOREACH_VARARGS(const char*, arg, ignore, {
         if (arg[0] != '\0') {
             argc += 1;
         }
@@ -211,7 +209,7 @@ void cmd_impl(int ignore, ...) {
     char** argv = malloc(sizeof(char*) * (argc + 1));
 
     argc = 0;
-    FOREACH_VARGS(char*, arg, ignore, {
+    FOREACH_VARARGS(char*, arg, ignore, {
         if (arg[0] != '\0') {
             argv[argc] = arg;
             argc += 1;
@@ -228,7 +226,7 @@ void cmd_impl(int ignore, ...) {
     coolbuild_exec(argv);
 }
 
-#define CMD(...) cmd_impl(69, __VA_ARGS__, NULL)
+#define CMD(...) cmd_impl(0, __VA_ARGS__, NULL)
 
 char** collect_args(char* fmt, ...) {
     size_t length = 0;
